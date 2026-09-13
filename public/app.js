@@ -345,20 +345,56 @@ function renderSaved() {
 }
 
 // ---------- Outreach: compose & send ----------
+function guessCompanyDomain(companyName) {
+  if (!companyName) return 'company.com';
+  let clean = String(companyName)
+    .replace(/[^a-zA-Z0-9\s]/g, '')
+    .replace(/\b(inc|llc|ltd|corp|corporation|technologies|tech|solutions|services|group|co|global|software)\b/gi, '')
+    .trim();
+  if (!clean) clean = companyName.replace(/[^a-zA-Z0-9]/g, '');
+  const slug = clean.toLowerCase().replace(/\s+/g, '');
+  return slug ? `${slug}.com` : 'company.com';
+}
+
+function autoSuggestEmails(companyName) {
+  const domain = guessCompanyDomain(companyName);
+  return [
+    { value: `careers@${domain}`, position: 'Careers & Hiring Team' },
+    { value: `hr@${domain}`, position: 'Human Resources' },
+    { value: `recruiting@${domain}`, position: 'Talent Acquisition' },
+    { value: `jobs@${domain}`, position: 'Job Inquiries' }
+  ];
+}
+
 function openCompose(jobId) {
   const job = state.jobs.find((j) => j.id === jobId) || state.savedJobs.find((j) => j.id === jobId);
   if (!job) return;
   state.activeJob = job;
 
-  document.getElementById('composeTo').value = '';
-  document.getElementById('lookupResults').innerHTML = '';
-  document.getElementById('lookupHint').textContent = '';
+  const domain = guessCompanyDomain(job.company);
+  const defaultEmail = `careers@${domain}`;
+
+  document.getElementById('composeTo').value = defaultEmail;
   document.getElementById('sendHint').textContent = '';
   document.getElementById('sendHint').className = 'hint';
   document.getElementById('tailorHint').textContent = '';
   document.getElementById('tailorHint').className = 'hint';
   document.getElementById('tailoredResume').value = '';
   document.getElementById('attachResume').checked = false;
+
+  const hint = document.getElementById('lookupHint');
+  const resultsBox = document.getElementById('lookupResults');
+
+  hint.textContent = `Auto-detected contact emails for ${job.company}:`;
+  hint.className = 'hint';
+  const suggested = autoSuggestEmails(job.company);
+  resultsBox.innerHTML = suggested
+    .map(
+      (e) => `<div class="lookup-item" onclick="pickContact('${e.value}')">
+        <span>${e.value}</span><span style="font-size:0.78rem; opacity:0.85;">${e.position}</span>
+      </div>`
+    )
+    .join('');
 
   document.getElementById('composeSubject').value = `Application — ${job.title} at ${job.company}`;
   document.getElementById('composeBody').value =
@@ -426,43 +462,70 @@ document.getElementById('lookupBtn').addEventListener('click', async () => {
   const resultsBox = document.getElementById('lookupResults');
   if (!job) return;
 
-  // Ask the user for the company's website domain since we only have a company name.
+  const defaultDomain = guessCompanyDomain(job.company);
   const domain = prompt(
-    `Enter ${job.company}'s website domain to look up a recruiting contact (e.g. company.com).\nLeave blank to skip — you can always enter the HR email manually.`
+    `Enter website domain for ${job.company} to search verified emails:`,
+    defaultDomain
   );
   if (!domain) return;
 
-  hint.textContent = 'Looking up…';
-  resultsBox.innerHTML = '';
+  hint.textContent = `Searching verified contacts for ${domain}…`;
+  hint.className = 'hint';
   try {
     const res = await fetch(`/api/contacts/find?domain=${encodeURIComponent(domain)}`);
     const data = await res.json();
     if (!res.ok) {
-      hint.textContent = data.error || 'Lookup failed.';
-      hint.className = 'hint error';
+      hint.textContent = data.error || 'Hunter API lookup not available. Showing suggested emails:';
+      const suggested = autoSuggestEmails(job.company);
+      resultsBox.innerHTML = suggested
+        .map(
+          (e) => `<div class="lookup-item" onclick="pickContact('${e.value}')">
+            <span>${e.value}</span><span style="font-size:0.78rem; opacity:0.85;">${e.position}</span>
+          </div>`
+        )
+        .join('');
       return;
     }
-    if (!data.emails.length) {
-      hint.textContent = 'No HR contacts found for that domain. Enter the email manually.';
+    if (!data.emails || !data.emails.length) {
+      hint.textContent = 'No verified contacts found for that domain. Showing suggested emails:';
+      const suggested = autoSuggestEmails(job.company);
+      resultsBox.innerHTML = suggested
+        .map(
+          (e) => `<div class="lookup-item" onclick="pickContact('${e.value}')">
+            <span>${e.value}</span><span style="font-size:0.78rem; opacity:0.85;">${e.position}</span>
+          </div>`
+        )
+        .join('');
       return;
     }
-    hint.textContent = `Found ${data.emails.length} possible contact(s):`;
+    hint.textContent = `Found ${data.emails.length} contact(s) for ${domain}:`;
     resultsBox.innerHTML = data.emails
       .map(
         (e) => `<div class="lookup-item" onclick="pickContact('${e.value}')">
-          <span>${e.value}</span><span>${e.position || ''}</span>
+          <span>${e.value}</span><span>${e.position || 'Recruiting'}</span>
         </div>`
       )
       .join('');
   } catch {
-    hint.textContent = 'Lookup failed. Enter the email manually.';
-    hint.className = 'hint error';
+    hint.textContent = 'Lookup failed. Showing suggested emails:';
+    const suggested = autoSuggestEmails(job.company);
+    resultsBox.innerHTML = suggested
+      .map(
+        (e) => `<div class="lookup-item" onclick="pickContact('${e.value}')">
+          <span>${e.value}</span><span style="font-size:0.78rem; opacity:0.85;">${e.position}</span>
+        </div>`
+      )
+      .join('');
   }
 });
 
 function pickContact(email) {
   document.getElementById('composeTo').value = email;
+  const hint = document.getElementById('lookupHint');
+  hint.textContent = `Selected recipient: ${email}`;
+  hint.className = 'hint';
 }
+window.pickContact = pickContact;
 
 document.getElementById('confirmSend').addEventListener('click', async () => {
   const to = document.getElementById('composeTo').value.trim();
