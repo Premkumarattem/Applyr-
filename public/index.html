@@ -170,6 +170,33 @@
     </div>
     <button id="saveProfileBtn" class="btn-primary" style="margin-top:1rem;">Save resume</button>
     <p id="profileHint" class="hint"></p>
+
+    <hr style="margin: 2rem 0; border: none; border-top: 1px solid var(--line-glass);" />
+
+    <h3 style="font-family: var(--serif); font-size: 1.3rem; margin-bottom: 0.5rem; color: var(--ink);">AI Resume Customizer ✨</h3>
+    <p class="hint" style="margin-bottom: 1rem;">Test how AI customizes your resume for any specific target role or job description.</p>
+
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+      <div class="field" style="flex: 1 1 200px;">
+        <label for="testJobTitle">Target Job Title</label>
+        <input id="testJobTitle" type="text" placeholder="e.g. Senior Software Engineer" />
+      </div>
+      <div class="field" style="flex: 1 1 200px;">
+        <label for="testCompany">Target Company</label>
+        <input id="testCompany" type="text" placeholder="e.g. Google / Microsoft" />
+      </div>
+    </div>
+    <div class="field" style="margin-bottom: 1rem;">
+      <label for="testJobDesc">Job Description / Key Requirements</label>
+      <textarea id="testJobDesc" rows="4" placeholder="Paste job description or required skills here…"></textarea>
+    </div>
+    <button id="testTailorBtn" type="button" class="btn-primary">Customize Resume with AI ✨</button>
+    <p id="testTailorHint" class="hint"></p>
+
+    <div id="testTailorResultBox" class="field hidden" style="margin-top: 1rem;">
+      <label for="testTailoredOutput">Tailored AI Resume Preview</label>
+      <textarea id="testTailoredOutput" rows="12" readonly></textarea>
+    </div>
   </section>
 
 </main>

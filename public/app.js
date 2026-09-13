@@ -187,11 +187,59 @@ document.getElementById('saveProfileBtn').addEventListener('click', async () => 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ resumeText }),
     });
-    hint.textContent = 'Saved.';
+    hint.textContent = 'Base resume saved!';
     hint.className = 'hint';
-    showToast('Resume saved');
   } catch {
-    hint.textContent = 'Failed to save.';
+    hint.textContent = 'Could not save resume.';
+    hint.className = 'hint error';
+  }
+});
+
+// ---------- AI Resume Customizer Tester ----------
+document.getElementById('testTailorBtn').addEventListener('click', async () => {
+  const jobTitle = document.getElementById('testJobTitle').value.trim();
+  const company = document.getElementById('testCompany').value.trim();
+  const jobDescription = document.getElementById('testJobDesc').value.trim();
+  const resumeText = document.getElementById('profileResume').value.trim();
+  const hint = document.getElementById('testTailorHint');
+  const resultBox = document.getElementById('testTailorResultBox');
+  const output = document.getElementById('testTailoredOutput');
+
+  if (!resumeText) {
+    hint.textContent = 'Please paste or upload your base resume above first.';
+    hint.className = 'hint error';
+    return;
+  }
+
+  if (!jobTitle || !jobDescription) {
+    hint.textContent = 'Please enter a target job title and job description / key skills.';
+    hint.className = 'hint error';
+    return;
+  }
+
+  hint.textContent = 'Customizing resume with AI…';
+  hint.className = 'hint';
+  output.value = '';
+  resultBox.classList.add('hidden');
+
+  try {
+    const res = await fetch('/api/resume/tailor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resumeText, jobTitle, company, jobDescription }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      hint.textContent = data.error || 'AI customization failed.';
+      hint.className = 'hint error';
+      return;
+    }
+    output.value = data.tailoredResume;
+    resultBox.classList.remove('hidden');
+    hint.textContent = data.mode === 'llm' ? 'Resume customized with Groq AI!' : 'Resume customized with Smart Local AI!';
+    hint.className = 'hint';
+  } catch {
+    hint.textContent = 'Could not reach the server.';
     hint.className = 'hint error';
   }
 });

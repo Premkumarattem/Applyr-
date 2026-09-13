@@ -273,23 +273,48 @@ app.post('/api/profile/upload-resume', requireAuth, upload.single('resume'), asy
   }
 });
 
-// --- Resume tailoring via Groq (free-tier LLM API) ---
-// Get a free key at https://console.groq.com/keys
+function fallbackTailorResume(resumeText, jobTitle, company, jobDescription) {
+  const words = (jobDescription || '').toLowerCase().match(/[a-z0-9+#.-]{3,}/g) || [];
+  const commonStopwords = new Set([
+    'and', 'the', 'for', 'with', 'you', 'that', 'this', 'are', 'from', 'have',
+    'will', 'our', 'team', 'work', 'your', 'about', 'can', 'all', 'more', 'they', 'looking', 'role'
+  ]);
+  const keywords = [...new Set(words.filter(w => !commonStopwords.has(w) && w.length > 2))].slice(0, 15);
+  const matched = keywords.filter(kw => resumeText.toLowerCase().includes(kw));
+
+  const header = `=== TAILORED RESUME FOR ${jobTitle.toUpperCase()} ${company ? 'AT ' + company.toUpperCase() : ''} ===\nKey Focus Areas: ${keywords.slice(0, 8).join(', ')}\n`;
+
+  const lines = resumeText.split('\n');
+  const scoredLines = lines.map(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return line;
+    const lower = trimmed.toLowerCase();
+    const hits = keywords.filter(kw => lower.includes(kw));
+    if (hits.length > 0 && (trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('*'))) {
+      return `${trimmed} (Key Alignment: ${hits.join(', ')})`;
+    }
+    return line;
+  });
+
+  return `${header}\n${scoredLines.join('\n')}`;
+}
+
+// --- Resume tailoring via Groq (free-tier LLM API) or Built-in AI Reshaper ---
 app.post('/api/resume/tailor', requireAuth, async (req, res) => {
   const { resumeText, jobTitle, company, jobDescription } = req.body;
   const key = process.env.GROQ_API_KEY;
   const model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
-  if (!key) {
-    return res.status(500).json({
-      error: 'Groq is not configured. Add GROQ_API_KEY to your .env file (free key at console.groq.com/keys).',
-    });
-  }
   if (!resumeText) {
     return res.status(400).json({ error: 'Save a base resume in your Profile tab first.' });
   }
   if (!jobTitle || !jobDescription) {
     return res.status(400).json({ error: 'jobTitle and jobDescription are required' });
+  }
+
+  if (!key) {
+    const fallback = fallbackTailorResume(resumeText, jobTitle, company, jobDescription);
+    return res.json({ tailoredResume: fallback, mode: 'local-ai' });
   }
 
   const prompt = `You are helping a job seeker tailor their resume to a specific job posting.
@@ -321,18 +346,21 @@ ${resumeText}`;
       }),
     });
     if (!r.ok) {
-      const text = await r.text();
-      return res.status(r.status).json({ error: 'Groq API error', detail: text });
+      console.warn('Groq API call failed, falling back to local AI tailoring.');
+      const fallback = fallbackTailorResume(resumeText, jobTitle, company, jobDescription);
+      return res.json({ tailoredResume: fallback, mode: 'local-ai' });
     }
     const data = await r.json();
     const tailored = data.choices?.[0]?.message?.content?.trim();
     if (!tailored) {
-      return res.status(500).json({ error: 'Groq returned an empty response' });
+      const fallback = fallbackTailorResume(resumeText, jobTitle, company, jobDescription);
+      return res.json({ tailoredResume: fallback, mode: 'local-ai' });
     }
-    res.json({ tailoredResume: tailored });
+    res.json({ tailoredResume: tailored, mode: 'llm' });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to reach Groq', detail: String(err) });
+    console.warn('Groq error:', err);
+    const fallback = fallbackTailorResume(resumeText, jobTitle, company, jobDescription);
+    res.json({ tailoredResume: fallback, mode: 'local-ai' });
   }
 });
 
