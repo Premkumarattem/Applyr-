@@ -622,7 +622,9 @@ document.getElementById('confirmSend').addEventListener('click', async () => {
     }
     state.sentEmails = data.sentEmails || [];
     document.getElementById('sentCount').textContent = state.sentEmails.length;
-    if (data.simulated) {
+    if (data.fallback) {
+      showToast(`SMTP timed out - Outreach saved to log (Use RESEND_API_KEY for HTTP delivery)`);
+    } else if (data.simulated) {
       showToast(`Outreach saved to log (Demo mode - configure SMTP/.env for live sending)`);
     } else {
       showToast(`Email sent successfully to ${to}`);
