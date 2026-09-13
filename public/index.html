@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Applyr — AI-tailored applications, sent to the right person</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="authScreen" class="auth-screen">
+  <div class="auth-panel">
+    <div class="brand" style="justify-content:center; margin-bottom:1.5rem;">
+      <svg class="brand-mark" viewBox="0 0 32 32" width="30" height="30" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="16" r="14.5" stroke="currentColor" stroke-width="2"/>
+        <path d="M11 20L16 10L21 20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M12.8 16.5H19.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span class="brand-name">Applyr</span>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-authview="login">Log in</button>
+      <button class="auth-tab" data-authview="register">Sign up</button>
+    </div>
+
+    <form id="loginForm" class="auth-form">
+      <div class="field">
+        <label for="loginUsername">Username</label>
+        <input id="loginUsername" type="text" required autocomplete="username" />
+      </div>
+      <div class="field">
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" type="password" required autocomplete="current-password" />
+      </div>
+      <button type="submit" class="btn-primary" style="width:100%;">Log in</button>
+      <p id="loginHint" class="hint"></p>
+    </form>
+
+    <form id="registerForm" class="auth-form hidden">
+      <div class="field">
+        <label for="registerUsername">Choose a username</label>
+        <input id="registerUsername" type="text" required autocomplete="username" />
+      </div>
+      <div class="field">
+        <label for="registerPassword">Choose a password</label>
+        <input id="registerPassword" type="password" required minlength="6" autocomplete="new-password" />
+        <p class="hint">At least 6 characters.</p>
+      </div>
+      <button type="submit" class="btn-primary" style="width:100%;">Create account</button>
+      <p id="registerHint" class="hint"></p>
+    </form>
+  </div>
+</div>
+
+<div id="appRoot" class="hidden">
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 32 32" width="26" height="26" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="16" cy="16" r="14.5" stroke="currentColor" stroke-width="2"/>
+      <path d="M11 20L16 10L21 20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M12.8 16.5H19.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <span class="brand-name">Applyr</span>
+  </div>
+  <nav class="tabs">
+    <button class="tab active" data-view="search">Search</button>
+    <button class="tab" data-view="saved">Saved <span id="savedCount" class="count-pill">0</span></button>
+    <button class="tab" data-view="sent">Sent mail <span id="sentCount" class="count-pill">0</span></button>
+    <button class="tab" data-view="profile">Profile</button>
+    <button id="logoutBtn" class="tab" style="margin-left:0.5rem;">Log out</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- SEARCH VIEW -->
+  <section id="view-search" class="view active">
+    <p class="tagline">Search real openings, let AI tailor your resume to each one, and send it straight to the person hiring.</p>
+    <form id="searchForm" class="search-form">
+      <div class="field field-wide">
+        <label for="what">Role</label>
+        <input id="what" name="what" type="text" placeholder="e.g. Backend Engineer" required />
+      </div>
+      <div class="field">
+        <label for="country">Country</label>
+        <select id="country" name="country"></select>
+      </div>
+      <div class="field">
+        <label for="where">Location</label>
+        <input id="where" name="where" type="text" placeholder="e.g. Austin" />
+      </div>
+      <div class="field" style="flex-direction:row; align-items:center; gap:0.5rem;">
+        <input type="checkbox" id="contractOnly" style="width:auto;" />
+        <label for="contractOnly" style="margin:0;">Contract only</label>
+      </div>
+      <button type="submit" class="btn-primary">Search jobs</button>
+      <button type="button" id="openLinkedinBtn" class="btn-ghost">Open on LinkedIn ↗</button>
+    </form>
+    <div class="chip-row">
+      <span class="chip-label">Quick filters:</span>
+      <button type="button" class="chip" data-preset="c2c">C2C / Corp-to-Corp</button>
+      <button type="button" class="chip" data-preset="w2contract">W2 Contract</button>
+      <button type="button" class="chip" data-preset="remote">Remote</button>
+      <button type="button" id="clearFiltersBtn" class="chip" style="margin-left:auto;">Clear filters ✕</button>
+    </div>
+
+    <p id="resultsMeta" class="results-meta"></p>
+    <div id="results" class="ledger"></div>
+  </section>
+
+  <!-- SAVED VIEW -->
+  <section id="view-saved" class="view">
+    <h2 class="view-title">Saved roles</h2>
+    <div id="savedResults" class="ledger"></div>
+  </section>
+
+  <!-- SENT VIEW -->
+  <section id="view-sent" class="view">
+    <h2 class="view-title">Outreach log</h2>
+    <table class="sent-table">
+      <thead>
+        <tr><th>Sent</th><th>To</th><th>Subject</th><th>Role</th><th>Company</th></tr>
+      </thead>
+      <tbody id="sentBody"></tbody>
+    </table>
+  </section>
+
+  <!-- PROFILE VIEW -->
+  <section id="view-profile" class="view">
+    <h2 class="view-title">Your base resume</h2>
+    <p class="hint" style="margin-bottom:1rem;">
+      Upload a resume file, or paste your resume as plain text below. When you draft
+      outreach for a job, you can tailor this to that specific posting with one click.
+    </p>
+
+    <div class="field" style="margin-bottom:1rem;">
+      <label for="resumeFile">Upload resume (.pdf, .docx, or .txt)</label>
+      <div class="row-inline">
+        <input id="resumeFile" type="file" accept=".pdf,.docx,.txt" />
+        <button id="uploadResumeBtn" type="button" class="btn-ghost">Upload &amp; extract text</button>
+      </div>
+      <p id="uploadHint" class="hint"></p>
+    </div>
+
+    <div class="field">
+      <label for="profileResume">Or paste/edit as text</label>
+      <textarea id="profileResume" rows="18" placeholder="Paste your resume text here…"></textarea>
+    </div>
+    <button id="saveProfileBtn" class="btn-primary" style="margin-top:0.75rem;">Save resume</button>
+    <p id="profileHint" class="hint"></p>
+  </section>
+
+</main>
+
+<!-- COMPOSE MODAL -->
+<div id="composeOverlay" class="overlay hidden">
+  <div class="compose-panel">
+    <div class="compose-header">
+      <h3>Draft outreach</h3>
+      <button id="closeCompose" class="icon-btn" aria-label="Close">✕</button>
+    </div>
+
+    <div class="compose-body">
+      <div class="field">
+        <label for="composeTo">Recipient email</label>
+        <div class="row-inline">
+          <input id="composeTo" type="email" placeholder="hr@company.com" required />
+          <button id="lookupBtn" type="button" class="btn-ghost">Find contact</button>
+        </div>
+        <p id="lookupHint" class="hint"></p>
+        <div id="lookupResults" class="lookup-results"></div>
+      </div>
+      <div class="field">
+        <label for="composeSubject">Subject</label>
+        <input id="composeSubject" type="text" />
+      </div>
+      <div class="field">
+        <label for="composeBody">Message</label>
+        <textarea id="composeBody" rows="12"></textarea>
+      </div>
+
+      <div class="field">
+        <div class="row-inline" style="align-items:center;">
+          <label style="margin:0;">Tailored resume (optional attachment)</label>
+          <button id="tailorBtn" type="button" class="btn-ghost">Tailor with AI</button>
+        </div>
+        <p id="tailorHint" class="hint"></p>
+        <textarea id="tailoredResume" rows="8" placeholder="Click 'Tailor with AI' to generate a version of your resume matched to this job — review it before sending."></textarea>
+        <label style="display:flex; align-items:center; gap:0.4rem; font-weight:400;">
+          <input type="checkbox" id="attachResume" style="width:auto;" />
+          Attach as .txt to this email
+        </label>
+      </div>
+
+      <p id="sendHint" class="hint"></p>
+    </div>
+
+    <div class="compose-footer">
+      <button id="cancelSend" class="btn-ghost">Cancel</button>
+      <button id="confirmSend" class="btn-primary">Send email</button>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
