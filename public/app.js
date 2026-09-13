@@ -616,13 +616,17 @@ document.getElementById('confirmSend').addEventListener('click', async () => {
     });
     const data = await res.json();
     if (!res.ok) {
-      sendHint.textContent = data.error || 'Failed to send.';
+      sendHint.textContent = data.detail ? `${data.error}: ${data.detail}` : (data.error || 'Failed to send.');
       sendHint.className = 'hint error';
       return;
     }
     state.sentEmails = data.sentEmails || [];
     document.getElementById('sentCount').textContent = state.sentEmails.length;
-    showToast(`Email sent to ${to}`);
+    if (data.simulated) {
+      showToast(`Outreach saved to log (Demo mode - configure SMTP/.env for live sending)`);
+    } else {
+      showToast(`Email sent successfully to ${to}`);
+    }
     closeCompose();
   } catch {
     sendHint.textContent = 'Could not reach the server.';

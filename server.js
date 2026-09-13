@@ -432,11 +432,14 @@ app.post('/api/outreach/send', requireAuth, sendLimiter, async (req, res) => {
     }
   }
 
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-    return res.status(500).json({
-      error:
-        'No email method configured. Add RESEND_API_KEY (recommended — works on all hosts, free at resend.com) ' +
-        'or SMTP_HOST/SMTP_USER/SMTP_PASS to your .env file. Note: Railway\'s free/hobby plan blocks outbound SMTP entirely — use Resend there.',
+  if (!RESEND_API_KEY && (!SMTP_HOST || !SMTP_USER || !SMTP_PASS)) {
+    console.log(`[OUTREACH DEMO] Simulated email to ${to} for "${jobTitle}" at "${company}".`);
+    const log = store.logSentEmail(req.session.username, { to, subject, jobId, jobTitle, company, simulated: true });
+    return res.json({
+      ok: true,
+      simulated: true,
+      message: 'Outreach email saved to Outreach Log! Add RESEND_API_KEY or SMTP credentials to your .env file to send real live emails.',
+      sentEmails: log,
     });
   }
 
@@ -445,7 +448,7 @@ app.post('/api/outreach/send', requireAuth, sendLimiter, async (req, res) => {
     port: Number(SMTP_PORT) || 587,
     secure: Number(SMTP_PORT) === 465,
     auth: { user: SMTP_USER, pass: SMTP_PASS },
-    connectionTimeout: 10000, // fail fast (10s) instead of hanging indefinitely on blocked ports
+    connectionTimeout: 10000,
   });
 
   try {
@@ -459,8 +462,8 @@ app.post('/api/outreach/send', requireAuth, sendLimiter, async (req, res) => {
     const log = store.logSentEmail(req.session.username, { to, subject, jobId, jobTitle, company });
     res.json({ ok: true, sentEmails: log });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to send email', detail: String(err) });
+    console.error('SMTP send error:', err);
+    res.status(500).json({ error: 'Failed to send email via SMTP', detail: err.message || String(err) });
   }
 });
 
