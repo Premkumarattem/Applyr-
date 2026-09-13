@@ -89,6 +89,20 @@ app.post('/api/auth/login', async (req, res) => {
   res.json({ username: clean });
 });
 
+app.post('/api/auth/reset-password', async (req, res) => {
+  const { username, newPassword } = req.body;
+  if (!username || !newPassword || newPassword.length < 6) {
+    return res.status(400).json({ error: 'Username and a new password (6+ characters) are required.' });
+  }
+  const clean = String(username).trim().toLowerCase();
+  if (!store.userExists(clean)) {
+    return res.status(404).json({ error: 'Username not found. Please check your username or sign up.' });
+  }
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  store.updatePassword(clean, passwordHash);
+  res.json({ ok: true, message: 'Password updated successfully! You can now log in.' });
+});
+
 app.post('/api/auth/logout', (req, res) => {
   req.session.destroy(() => res.json({ ok: true }));
 });

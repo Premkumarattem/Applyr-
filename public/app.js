@@ -9,9 +9,10 @@ const state = {
 document.querySelectorAll('.auth-tab').forEach((tab) => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.auth-tab').forEach((t) => t.classList.toggle('active', t === tab));
-    const isLogin = tab.dataset.authview === 'login';
-    document.getElementById('loginForm').classList.toggle('hidden', !isLogin);
-    document.getElementById('registerForm').classList.toggle('hidden', isLogin);
+    const view = tab.dataset.authview;
+    document.getElementById('loginForm').classList.toggle('hidden', view !== 'login');
+    document.getElementById('registerForm').classList.toggle('hidden', view !== 'register');
+    document.getElementById('resetForm').classList.toggle('hidden', view !== 'reset');
   });
 });
 
@@ -61,6 +62,35 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
       return;
     }
     enterApp();
+  } catch {
+    hint.textContent = 'Could not reach the server.';
+    hint.className = 'hint error';
+  }
+});
+
+document.getElementById('resetForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const username = document.getElementById('resetUsername').value.trim();
+  const newPassword = document.getElementById('resetPassword').value;
+  const hint = document.getElementById('resetHint');
+  hint.textContent = '';
+  hint.className = 'hint';
+  try {
+    const res = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, newPassword }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      hint.textContent = data.error || 'Password reset failed.';
+      hint.className = 'hint error';
+      return;
+    }
+    hint.textContent = data.message || 'Password reset successfully! Switch to Log in.';
+    hint.style.color = '#34d399';
+    document.getElementById('loginUsername').value = username;
+    document.getElementById('resetPassword').value = '';
   } catch {
     hint.textContent = 'Could not reach the server.';
     hint.className = 'hint error';

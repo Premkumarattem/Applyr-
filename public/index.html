@@ -28,6 +28,7 @@
     <div class="auth-tabs">
       <button class="auth-tab active" data-authview="login">Log in</button>
       <button class="auth-tab" data-authview="register">Sign up</button>
+      <button class="auth-tab" data-authview="reset">Reset</button>
     </div>
 
     <form id="loginForm" class="auth-form">
@@ -55,6 +56,20 @@
       </div>
       <button type="submit" class="btn-primary" style="width:100%;">Create account</button>
       <p id="registerHint" class="hint"></p>
+    </form>
+
+    <form id="resetForm" class="auth-form hidden">
+      <div class="field">
+        <label for="resetUsername">Username</label>
+        <input id="resetUsername" type="text" required autocomplete="username" placeholder="Your username" />
+      </div>
+      <div class="field">
+        <label for="resetPassword">New password</label>
+        <input id="resetPassword" type="password" required minlength="6" autocomplete="new-password" placeholder="Min 6 characters" />
+        <p class="hint">At least 6 characters.</p>
+      </div>
+      <button type="submit" class="btn-primary" style="width:100%;">Reset password</button>
+      <p id="resetHint" class="hint"></p>
     </form>
   </div>
 </div>
