@@ -325,6 +325,19 @@ document.getElementById('searchForm').addEventListener('submit', async (e) => {
   }
 });
 
+function getCompanyInitial(companyName) {
+  if (!companyName) return 'C';
+  const clean = companyName.replace(/[^a-zA-Z0-9]/g, '').trim();
+  return clean.charAt(0).toUpperCase() || 'C';
+}
+
+function extractSkillTags(job) {
+  const text = `${job.title || ''} ${job.description || ''}`.toLowerCase();
+  const commonSkills = ['Node.js', 'Python', 'React', 'Java', 'TypeScript', 'AWS', 'Docker', 'PostgreSQL', 'GraphQL', 'Kubernetes', 'Cloud', 'C++', 'Go', 'Agile'];
+  const matches = commonSkills.filter(s => text.includes(s.toLowerCase()));
+  return matches.length > 0 ? matches.slice(0, 4) : ['Engineering', 'Software', 'Cloud'];
+}
+
 function renderJobs(jobs, container) {
   if (!jobs.length) {
     container.innerHTML = '<div class="empty-state">No roles matched. Try a broader title or a different country.</div>';
@@ -332,34 +345,45 @@ function renderJobs(jobs, container) {
   }
   container.innerHTML = jobs
     .map(
-      (job, i) => `
+      (job, i) => {
+        const initial = getCompanyInitial(job.company);
+        const tags = extractSkillTags(job);
+        return `
     <div class="job-row" data-id="${job.id}">
-      <div class="job-index">${String(i + 1).padStart(2, '0')}</div>
-      <div class="job-main">
-        <h3>${escapeHtml(job.title)}</h3>
-        <div class="job-meta">
-          <span>${escapeHtml(job.company)}</span>
-          <span>${escapeHtml(job.location)}</span>
-          ${job.contractType ? `<span class="badge-contract">${escapeHtml(job.contractType)}${job.contractTime ? ' · ' + escapeHtml(job.contractTime) : ''}</span>` : ''}
-          ${salaryLabel(job)}
+      <div class="job-card-top">
+        <div class="company-avatar">${initial}</div>
+        <div class="job-main-header">
+          <h3>${escapeHtml(job.title)}</h3>
+          <div class="job-meta-row">
+            <span class="job-company">${escapeHtml(job.company)}</span>
+            <span>📍 ${escapeHtml(job.location)}</span>
+            ${job.contractType ? `<span class="badge-contract">${escapeHtml(job.contractType)}</span>` : ''}
+            ${salaryLabel(job)}
+          </div>
         </div>
-        <p class="job-desc">${escapeHtml((job.description || '').slice(0, 180))}${job.description && job.description.length > 180 ? '…' : ''}</p>
       </div>
-      <div class="job-actions">
-        <button class="btn-primary" onclick="openCompose('${job.id}')">Draft email</button>
-        <button class="btn-ghost" onclick="saveJob('${job.id}')">Save</button>
-        <a href="${job.redirectUrl}" target="_blank" rel="noopener">View posting ↗</a>
-        <a href="${linkedinSearchUrl(job.title, job.company, job.location)}" target="_blank" rel="noopener">Search on LinkedIn ↗</a>
+      <p class="job-desc">${escapeHtml((job.description || '').slice(0, 160))}${job.description && job.description.length > 160 ? '…' : ''}</p>
+      
+      <div class="skill-tags">
+        ${tags.map(t => `<span class="skill-tag">${escapeHtml(t)}</span>`).join('')}
       </div>
-    </div>`
+
+      <div class="job-actions-row">
+        <button class="btn-primary" onclick="openCompose('${job.id}')">Draft Email 🚀</button>
+        <button class="btn-ghost" onclick="saveJob('${job.id}')">🔖 Save</button>
+        <a class="link-btn" href="${job.redirectUrl}" target="_blank" rel="noopener">Posting ↗</a>
+        <a class="link-btn" href="${linkedinSearchUrl(job.title, job.company, job.location)}" target="_blank" rel="noopener">LinkedIn ↗</a>
+      </div>
+    </div>`;
+      }
     )
     .join('');
 }
 
 function salaryLabel(job) {
   if (!job.salaryMin && !job.salaryMax) return '';
-  const fmt = (n) => (n ? Math.round(n).toLocaleString() : '');
-  return `<span class="salary">${fmt(job.salaryMin)}${job.salaryMax ? '–' + fmt(job.salaryMax) : ''}</span>`;
+  const fmt = (n) => (n ? '$' + Math.round(n / 1000) + 'k' : '');
+  return `<span class="job-salary">${fmt(job.salaryMin)}${job.salaryMax ? '–' + fmt(job.salaryMax) : ''}/yr</span>`;
 }
 
 function escapeHtml(str = '') {
