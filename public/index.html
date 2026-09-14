@@ -171,20 +171,19 @@
     </div>
   </section>
 
-  <!-- PROFILE VIEW: 2-COLUMN SIDE-BY-SIDE LAYOUT -->
+  <!-- PROFILE VIEW -->
   <section id="view-profile" class="view">
     <div class="profile-header-bar">
       <div>
-        <h2 class="view-title" style="margin: 0;">Candidate Profile &amp; AI Resume Engine</h2>
-        <p class="hint" style="margin-top: 0.25rem;">Upload or paste your base resume once. Use the AI Customizer to preview job-matched resume outputs.</p>
+        <h2 class="view-title" style="margin: 0;">Candidate Profile &amp; Resume Editor</h2>
+        <p class="hint" style="margin-top: 0.25rem;">Upload or paste your base resume once. Your resume summary will be automatically included in email outreach.</p>
       </div>
     </div>
 
-    <div class="profile-grid">
-      <!-- LEFT COLUMN: 1. Base Resume Editor -->
+    <div style="max-width: 800px; margin: 1.5rem auto 0 auto;">
       <div class="profile-card">
         <div class="card-header">
-          <h3>1. Base Resume Editor</h3>
+          <h3>Base Resume Editor</h3>
         </div>
 
         <div class="upload-zone" id="uploadZone">
@@ -204,41 +203,6 @@
         </div>
         <button id="saveProfileBtn" class="btn-primary" style="margin-top:1rem; width:100%;">Save Base Resume</button>
         <p id="profileHint" class="hint"></p>
-      </div>
-
-      <!-- RIGHT COLUMN: 2. AI Resume Customizer -->
-      <div class="profile-card">
-        <div class="card-header">
-          <h3>2. AI Resume Customizer</h3>
-          <span class="ai-badge">✨ Active AI</span>
-        </div>
-
-        <div class="form-row-2">
-          <div class="field">
-            <label for="testJobTitle">Target Job Title</label>
-            <input id="testJobTitle" type="text" placeholder="e.g. Senior Full Stack Engineer" />
-          </div>
-          <div class="field">
-            <label for="testCompany">Target Company</label>
-            <input id="testCompany" type="text" placeholder="e.g. Google / Microsoft" />
-          </div>
-        </div>
-
-        <div class="field" style="margin-top: 1rem;">
-          <label for="testJobDesc">Job Description &amp; Requirements</label>
-          <textarea id="testJobDesc" rows="4" placeholder="Paste job requirements here (e.g. React, Node.js, AWS, PostgreSQL)..."></textarea>
-        </div>
-
-        <button id="testTailorBtn" type="button" class="btn-primary btn-glow" style="margin-top: 1rem; width: 100%;">Customize Resume with AI ✨</button>
-        <p id="testTailorHint" class="hint"></p>
-
-        <div id="testTailorResultBox" class="field hidden" style="margin-top: 1.25rem;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.4rem;">
-            <label for="testTailoredOutput" style="margin:0;">AI Tailored Resume Preview</label>
-            <span class="skill-match-pill">Skill Match: <strong>92%</strong></span>
-          </div>
-          <textarea id="testTailoredOutput" rows="10" readonly></textarea>
-        </div>
       </div>
     </div>
   </section>
@@ -274,20 +238,7 @@
 
       <div class="field">
         <label for="composeBody">Message Body &amp; Candidate Highlights</label>
-        <textarea id="composeBody" rows="12"></textarea>
-      </div>
-
-      <div class="field field-tailor-box">
-        <div class="row-inline" style="align-items:center; justify-content:space-between;">
-          <label style="margin:0;">Tailored Resume Attachment (Optional)</label>
-          <button id="tailorBtn" type="button" class="btn-ghost btn-sm">Tailor with AI ✨</button>
-        </div>
-        <p id="tailorHint" class="hint"></p>
-        <textarea id="tailoredResume" rows="6" placeholder="Click 'Tailor with AI' to generate a job-matched version of your resume..."></textarea>
-        <label style="display:flex; align-items:center; gap:0.5rem; font-weight:500; cursor:pointer; margin-top:0.4rem;">
-          <input type="checkbox" id="attachResume" style="width:auto; cursor:pointer;" />
-          Attach Tailored Resume as .txt to this email
-        </label>
+        <textarea id="composeBody" rows="14"></textarea>
       </div>
 
       <p id="sendHint" class="hint"></p>

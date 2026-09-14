@@ -195,54 +195,6 @@ document.getElementById('saveProfileBtn').addEventListener('click', async () => 
   }
 });
 
-// ---------- AI Resume Customizer Tester ----------
-document.getElementById('testTailorBtn').addEventListener('click', async () => {
-  const jobTitle = document.getElementById('testJobTitle').value.trim();
-  const company = document.getElementById('testCompany').value.trim();
-  const jobDescription = document.getElementById('testJobDesc').value.trim();
-  const resumeText = document.getElementById('profileResume').value.trim();
-  const hint = document.getElementById('testTailorHint');
-  const resultBox = document.getElementById('testTailorResultBox');
-  const output = document.getElementById('testTailoredOutput');
-
-  if (!resumeText) {
-    hint.textContent = 'Please paste or upload your base resume above first.';
-    hint.className = 'hint error';
-    return;
-  }
-
-  if (!jobTitle || !jobDescription) {
-    hint.textContent = 'Please enter a target job title and job description / key skills.';
-    hint.className = 'hint error';
-    return;
-  }
-
-  hint.textContent = 'Customizing resume with AI…';
-  hint.className = 'hint';
-  output.value = '';
-  resultBox.classList.add('hidden');
-
-  try {
-    const res = await fetch('/api/resume/tailor', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resumeText, jobTitle, company, jobDescription }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      hint.textContent = data.error || 'AI customization failed.';
-      hint.className = 'hint error';
-      return;
-    }
-    output.value = data.tailoredResume;
-    resultBox.classList.remove('hidden');
-    hint.textContent = data.mode === 'llm' ? 'Resume customized with Groq AI!' : 'Resume customized with Smart Local AI!';
-    hint.className = 'hint';
-  } catch {
-    hint.textContent = 'Could not reach the server.';
-    hint.className = 'hint error';
-  }
-});
 
 // ---------- Countries ----------
 async function loadCountries() {
@@ -483,10 +435,6 @@ async function openCompose(jobId) {
   document.getElementById('composeTo').value = defaultEmail;
   document.getElementById('sendHint').textContent = '';
   document.getElementById('sendHint').className = 'hint';
-  document.getElementById('tailorHint').textContent = '';
-  document.getElementById('tailorHint').className = 'hint';
-  document.getElementById('tailoredResume').value = '';
-  document.getElementById('attachResume').checked = false;
 
   const hint = document.getElementById('lookupHint');
   const resultsBox = document.getElementById('lookupResults');
@@ -533,49 +481,6 @@ document.getElementById('cancelSend').addEventListener('click', closeCompose);
 function closeCompose() {
   document.getElementById('composeOverlay').classList.add('hidden');
 }
-
-document.getElementById('tailorBtn').addEventListener('click', async () => {
-  const job = state.activeJob;
-  const hint = document.getElementById('tailorHint');
-  const out = document.getElementById('tailoredResume');
-  if (!job) return;
-
-  const profileRes = await fetch('/api/profile');
-  const profile = await profileRes.json();
-  if (!profile.resumeText) {
-    hint.textContent = 'Add your base resume in the Profile tab first.';
-    hint.className = 'hint error';
-    return;
-  }
-
-  hint.textContent = 'Tailoring with AI…';
-  hint.className = 'hint';
-  out.value = '';
-
-  try {
-    const res = await fetch('/api/resume/tailor', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        resumeText: profile.resumeText,
-        jobTitle: job.title,
-        company: job.company,
-        jobDescription: job.description || '',
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      hint.textContent = data.error || 'Tailoring failed.';
-      hint.className = 'hint error';
-      return;
-    }
-    out.value = data.tailoredResume;
-    hint.textContent = 'Review it, then attach if you\'re happy with it.';
-  } catch {
-    hint.textContent = 'Could not reach the server.';
-    hint.className = 'hint error';
-  }
-});
 
 document.getElementById('lookupBtn').addEventListener('click', async () => {
   const job = state.activeJob;
@@ -654,14 +559,6 @@ document.getElementById('confirmSend').addEventListener('click', async () => {
   const body = document.getElementById('composeBody').value.trim();
   const sendHint = document.getElementById('sendHint');
   const job = state.activeJob;
-  const attachResume = document.getElementById('attachResume').checked;
-  const tailoredResume = document.getElementById('tailoredResume').value.trim();
-
-  if (attachResume && !tailoredResume) {
-    sendHint.textContent = 'Tailor (or write) a resume before attaching it.';
-    sendHint.className = 'hint error';
-    return;
-  }
 
   if (!to || !subject || !body) {
     sendHint.textContent = 'Fill in the recipient, subject, and message.';
@@ -684,7 +581,6 @@ document.getElementById('confirmSend').addEventListener('click', async () => {
         jobId: job?.id,
         jobTitle: job?.title,
         company: job?.company,
-        resumeAttachment: attachResume ? tailoredResume : undefined,
       }),
     });
     const data = await res.json();
