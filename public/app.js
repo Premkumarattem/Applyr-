@@ -414,7 +414,7 @@ function autoSuggestEmails(companyName) {
   ];
 }
 
-function openCompose(jobId) {
+async function openCompose(jobId) {
   const job = state.jobs.find((j) => j.id === jobId) || state.savedJobs.find((j) => j.id === jobId);
   if (!job) return;
   state.activeJob = job;
@@ -444,13 +444,28 @@ function openCompose(jobId) {
     )
     .join('');
 
+  let resumeSnippet = '';
+  try {
+    const profileRes = await fetch('/api/profile');
+    if (profileRes.ok) {
+      const profile = await profileRes.json();
+      if (profile && profile.resumeText) {
+        const lines = profile.resumeText.split('\n').filter((l) => l.trim());
+        const summaryLines = lines.slice(0, 10).join('\n');
+        resumeSnippet = `\n\n--------------------------------------------------\nAPPLICANT RESUME DETAILS & KEY HIGHLIGHTS:\n${summaryLines}\n--------------------------------------------------`;
+      }
+    }
+  } catch (err) {
+    console.warn('Could not fetch candidate profile resume:', err);
+  }
+
   document.getElementById('composeSubject').value = `Application — ${job.title} at ${job.company}`;
   document.getElementById('composeBody').value =
-    `Hello,\n\nI'm reaching out about the ${job.title} role at ${job.company}` +
-    `${job.location ? ' (' + job.location + ')' : ''}. I came across the listing and believe my background ` +
-    `is a strong fit — I'd welcome the chance to share more and discuss next steps.\n\n` +
-    `Could you let me know the best way to formally apply, or point me to the right person on the team?\n\n` +
-    `Thank you for your time,\n[Your name]`;
+    `Hello,\n\nI'm reaching out regarding the ${job.title} position at ${job.company}` +
+    `${job.location ? ' (' + job.location + ')' : ''}. I believe my technical background and experience are a strong fit for your team.\n` +
+    `${resumeSnippet}\n\n` +
+    `Could you please let me know the best way to formally apply, or point me to the hiring manager?\n\n` +
+    `Thank you for your time and consideration,\nJob Applicant`;
 
   document.getElementById('composeOverlay').classList.remove('hidden');
 }
