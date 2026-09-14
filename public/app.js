@@ -255,22 +255,43 @@ async function loadCountries() {
   select.value = 'us';
 }
 
-function linkedinSearchUrl(what = '', where = '', extraLocation = '') {
-  const url = new URL('https://www.linkedin.com/jobs/search/');
+function linkedinPostsUrl(what = '', where = '') {
   const keywords = what || 'java developer c2c -fulltime -bench -sales -hotlist -w2';
+  const url = new URL('https://www.linkedin.com/search/results/content/');
   url.searchParams.set('keywords', keywords);
-  const loc = where || extraLocation;
-  if (loc) url.searchParams.set('location', loc);
-  url.searchParams.set('f_TPR', 'r86400'); // past 24 hours (86400 seconds)
-  url.searchParams.set('sortBy', 'DD');    // sort by date posted (newest first)
+  url.searchParams.set('origin', 'FACETED_SEARCH');
+  url.searchParams.set('sortBy', '"date_posted"');
   return url.toString();
 }
 
-document.getElementById('openLinkedinBtn').addEventListener('click', () => {
-  const what = document.getElementById('what').value.trim() || 'java developer c2c -fulltime -bench -sales -hotlist -w2';
-  const where = document.getElementById('where').value.trim();
-  window.open(linkedinSearchUrl(what, where), '_blank', 'noopener');
-});
+function linkedinJobsUrl(what = '', where = '', extraLocation = '') {
+  const keywords = what || 'java developer c2c -fulltime -bench -sales -hotlist -w2';
+  const url = new URL('https://www.linkedin.com/jobs/search/');
+  url.searchParams.set('keywords', keywords);
+  const loc = where || extraLocation;
+  if (loc) url.searchParams.set('location', loc);
+  url.searchParams.set('f_TPR', 'r86400');
+  url.searchParams.set('sortBy', 'DD');
+  return url.toString();
+}
+
+const openPostsBtn = document.getElementById('openLinkedinPostsBtn');
+if (openPostsBtn) {
+  openPostsBtn.addEventListener('click', () => {
+    const what = document.getElementById('what').value.trim() || 'java developer c2c -fulltime -bench -sales -hotlist -w2';
+    const where = document.getElementById('where').value.trim();
+    window.open(linkedinPostsUrl(what, where), '_blank', 'noopener');
+  });
+}
+
+const openJobsBtn = document.getElementById('openLinkedinJobsBtn');
+if (openJobsBtn) {
+  openJobsBtn.addEventListener('click', () => {
+    const what = document.getElementById('what').value.trim() || 'java developer c2c -fulltime -bench -sales -hotlist -w2';
+    const where = document.getElementById('where').value.trim();
+    window.open(linkedinJobsUrl(what, where), '_blank', 'noopener');
+  });
+}
 
 document.getElementById('clearFiltersBtn').addEventListener('click', () => {
   document.querySelectorAll('.chip').forEach((c) => c.classList.remove('active'));
@@ -384,7 +405,8 @@ function renderJobs(jobs, container) {
         <button class="btn-primary" onclick="openCompose('${job.id}')">Draft Email 🚀</button>
         <button class="btn-ghost" onclick="saveJob('${job.id}')">🔖 Save</button>
         <a class="link-btn" href="${job.redirectUrl}" target="_blank" rel="noopener">Posting ↗</a>
-        <a class="link-btn" href="${linkedinSearchUrl(job.title, job.company, job.location)}" target="_blank" rel="noopener">LinkedIn ↗</a>
+        <a class="link-btn" href="${linkedinPostsUrl(job.title + ' C2C')}" target="_blank" rel="noopener">Posts ↗</a>
+        <a class="link-btn" href="${linkedinJobsUrl(job.title, job.company, job.location)}" target="_blank" rel="noopener">Jobs ↗</a>
       </div>
     </div>`;
       }
