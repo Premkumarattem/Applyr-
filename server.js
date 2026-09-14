@@ -127,7 +127,7 @@ app.get('/api/countries', (req, res) => {
 
 // --- Job search (Adzuna) ---
 app.get('/api/jobs/search', requireAuth, async (req, res) => {
-  const { what = '', country = 'us', where = '', page = 1, contractOnly = '' } = req.query;
+  const { what = '', country = 'us', where = '', page = 1, contractOnly = '', maxDaysOld = '' } = req.query;
 
   if (!ADZUNA_COUNTRIES[country]) {
     return res.status(400).json({ error: `Unsupported country code "${country}"` });
@@ -148,6 +148,9 @@ app.get('/api/jobs/search', requireAuth, async (req, res) => {
   if (where) url.searchParams.set('where', where);
   if (contractOnly === '1' || contractOnly === 'true') {
     url.searchParams.set('contract', '1');
+  }
+  if (maxDaysOld) {
+    url.searchParams.set('max_days_old', String(maxDaysOld));
   }
   url.searchParams.set('content-type', 'application/json');
 

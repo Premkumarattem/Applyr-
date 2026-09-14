@@ -130,11 +130,17 @@
         <input type="checkbox" id="contractOnly" style="width:auto; cursor:pointer;" />
         <label for="contractOnly" style="margin:0; cursor:pointer; font-weight: 500;">Contract only</label>
       </div>
+      <div class="field" style="flex-direction:row; align-items:center; gap:0.5rem; padding-bottom: 0.3rem;">
+        <input type="checkbox" id="last24h" style="width:auto; cursor:pointer;" checked />
+        <label for="last24h" style="margin:0; cursor:pointer; font-weight: 600; color: var(--neon-green);">⚡ Last 24 Hours</label>
+      </div>
       <button type="submit" class="btn-primary btn-search-submit">Find Jobs</button>
+      <button type="button" id="openLinkedinBtn" class="btn-ghost">LinkedIn (24h) ↗</button>
     </form>
 
     <div class="chip-row">
       <span class="chip-label">Quick filters:</span>
+      <button type="button" class="chip" data-preset="javac2c24h">⚡ Java C2C (Past 24h)</button>
       <button type="button" class="chip" data-preset="c2c">✓ C2C / Corp-to-Corp</button>
       <button type="button" class="chip" data-preset="w2contract">✓ W2 Contract</button>
       <button type="button" class="chip" data-preset="remote">🌐 Remote</button>

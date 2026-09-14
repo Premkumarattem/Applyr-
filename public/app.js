@@ -257,14 +257,17 @@ async function loadCountries() {
 
 function linkedinSearchUrl(what = '', where = '', extraLocation = '') {
   const url = new URL('https://www.linkedin.com/jobs/search/');
-  if (what) url.searchParams.set('keywords', what);
+  const keywords = what || 'java developer c2c -fulltime -bench -sales -hotlist -w2';
+  url.searchParams.set('keywords', keywords);
   const loc = where || extraLocation;
   if (loc) url.searchParams.set('location', loc);
+  url.searchParams.set('f_TPR', 'r86400'); // past 24 hours (86400 seconds)
+  url.searchParams.set('sortBy', 'DD');    // sort by date posted (newest first)
   return url.toString();
 }
 
 document.getElementById('openLinkedinBtn').addEventListener('click', () => {
-  const what = document.getElementById('what').value.trim();
+  const what = document.getElementById('what').value.trim() || 'java developer c2c -fulltime -bench -sales -hotlist -w2';
   const where = document.getElementById('where').value.trim();
   window.open(linkedinSearchUrl(what, where), '_blank', 'noopener');
 });
@@ -272,6 +275,8 @@ document.getElementById('openLinkedinBtn').addEventListener('click', () => {
 document.getElementById('clearFiltersBtn').addEventListener('click', () => {
   document.querySelectorAll('.chip').forEach((c) => c.classList.remove('active'));
   document.getElementById('contractOnly').checked = false;
+  const last24hEl = document.getElementById('last24h');
+  if (last24hEl) last24hEl.checked = false;
   document.getElementById('where').value = '';
 });
 
@@ -280,7 +285,12 @@ document.querySelectorAll('.chip[data-preset]').forEach((chip) => {
     document.querySelectorAll('.chip').forEach((c) => c.classList.remove('active'));
     chip.classList.add('active');
     const preset = chip.dataset.preset;
-    if (preset === 'c2c') {
+    if (preset === 'javac2c24h') {
+      document.getElementById('what').value = 'java developer c2c -fulltime -bench -sales -hotlist -w2';
+      document.getElementById('contractOnly').checked = true;
+      const last24hEl = document.getElementById('last24h');
+      if (last24hEl) last24hEl.checked = true;
+    } else if (preset === 'c2c') {
       document.getElementById('what').value = 'C2C';
       document.getElementById('contractOnly').checked = true;
     } else if (preset === 'w2contract') {
@@ -300,14 +310,16 @@ document.getElementById('searchForm').addEventListener('submit', async (e) => {
   const country = document.getElementById('country').value;
   const where = document.getElementById('where').value.trim();
   const contractOnly = document.getElementById('contractOnly').checked;
+  const last24hEl = document.getElementById('last24h');
+  const last24h = last24hEl ? last24hEl.checked : false;
 
   const meta = document.getElementById('resultsMeta');
   const results = document.getElementById('results');
-  meta.textContent = 'Searching…';
+  meta.textContent = 'Searching past 24h jobs…';
   results.innerHTML = '';
 
   try {
-    const url = `/api/jobs/search?what=${encodeURIComponent(what)}&country=${country}&where=${encodeURIComponent(where)}&contractOnly=${contractOnly ? '1' : '0'}`;
+    const url = `/api/jobs/search?what=${encodeURIComponent(what)}&country=${country}&where=${encodeURIComponent(where)}&contractOnly=${contractOnly ? '1' : '0'}${last24h ? '&maxDaysOld=1' : ''}`;
     const res = await fetch(url);
     const data = await res.json();
     if (!res.ok) {
@@ -316,7 +328,7 @@ document.getElementById('searchForm').addEventListener('submit', async (e) => {
       return;
     }
     state.jobs = data.jobs || [];
-    const filterNote = contractOnly ? ' (Contract only ✓ — uncheck to widen results)' : '';
+    const filterNote = `${contractOnly ? ' (Contract only ✓)' : ''}${last24h ? ' (Posted in last 24h ⚡)' : ''}`;
     meta.textContent = `${data.count?.toLocaleString() || state.jobs.length} roles found — showing first ${state.jobs.length}${filterNote}`;
     renderJobs(state.jobs, results);
   } catch (err) {
