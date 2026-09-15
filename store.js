@@ -131,6 +131,44 @@ function getProfile(username) {
   return user ? (user.profile || { resumeText: '' }) : { resumeText: '' };
 }
 
+function recordSubmission(username, submission) {
+  const db = readDB();
+  const clean = String(username || '').trim().toLowerCase();
+  if (!db.users[clean]) {
+    db.users[clean] = emptyUser();
+  }
+  const user = db.users[clean];
+  if (!Array.isArray(user.submissions)) user.submissions = [];
+
+  const record = {
+    id: `sub-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    timestamp: new Date().toISOString(),
+    ...submission
+  };
+
+  user.submissions.push(record);
+  writeDB(db);
+  return record;
+}
+
+function getSubmissions(username) {
+  const clean = String(username || '').trim().toLowerCase();
+  const user = readDB().users[clean];
+  return user ? (user.submissions || []) : [];
+}
+
+function isDuplicateSubmission(username, linkedInPostUrl, recruiterEmail) {
+  const submissions = getSubmissions(username);
+  const cleanUrl = String(linkedInPostUrl || '').trim().toLowerCase();
+  const cleanEmail = String(recruiterEmail || '').trim().toLowerCase();
+
+  return submissions.some((sub) => {
+    const subUrl = String(sub.linkedInPostUrl || sub.postUrl || '').trim().toLowerCase();
+    const subEmail = String(sub.recruiterEmail || sub.email || '').trim().toLowerCase();
+    return (cleanUrl && subUrl === cleanUrl) || (cleanEmail && subEmail === cleanEmail);
+  });
+}
+
 module.exports = {
   userExists,
   createUser,
@@ -142,4 +180,7 @@ module.exports = {
   getSentEmails,
   saveProfile,
   getProfile,
+  recordSubmission,
+  getSubmissions,
+  isDuplicateSubmission,
 };

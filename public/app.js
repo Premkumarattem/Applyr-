@@ -169,6 +169,7 @@ function switchView(view) {
   if (view === 'saved') renderSaved();
   if (view === 'sent') loadSentHistory();
   if (view === 'profile') loadProfile();
+  if (view === 'automation') loadAutomationView();
 }
 
 // ---------- Profile (base resume) ----------
@@ -638,6 +639,139 @@ function showToast(msg, isError = false) {
   toast.className = isError ? 'toast error' : 'toast';
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toast.classList.add('hidden'), 3000);
+}
+
+// ---------- AUTOMATION ENGINE UI ----------
+document.getElementById('runAutoSearchBtn').addEventListener('click', runAutoSearch);
+
+async function loadAutomationView() {
+  await loadSubmissionHistory();
+}
+
+async function runAutoSearch() {
+  const btn = document.getElementById('runAutoSearchBtn');
+  btn.disabled = true;
+  btn.textContent = 'Searching 24h LinkedIn... ⏳';
+
+  try {
+    const res = await fetch('/api/automation/linkedin-search', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.error || 'LinkedIn Search failed.', true);
+      return;
+    }
+
+    document.getElementById('autoQueryBox').style.display = 'block';
+    document.getElementById('autoCandidateTitle').textContent = data.candidateJobTitle;
+    document.getElementById('autoSearchQuery').textContent = data.query;
+    document.getElementById('autoLinkedInUrlBtn').href = data.linkedInSearchUrl;
+
+    renderAutoPosts(data.posts);
+    showToast(`Found ${data.posts.length} 24h recruiter post(s) for "${data.candidateJobTitle}"!`);
+  } catch (err) {
+    showToast('Failed to connect to server.', true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Execute 24h LinkedIn Search 🚀';
+  }
+}
+
+function renderAutoPosts(posts) {
+  const grid = document.getElementById('autoPostsGrid');
+  if (!posts || !posts.length) {
+    grid.innerHTML = '<div class="empty-state">No active 24h recruiter posts found.</div>';
+    return;
+  }
+
+  grid.innerHTML = posts.map(p => `
+    <article class="job-card">
+      <div class="job-header">
+        <div>
+          <span class="company-badge">${escapeHtml(p.company)}</span>
+          <h3 class="job-title" style="margin-top:0.3rem;">${escapeHtml(p.jobTitle)}</h3>
+        </div>
+        <span class="salary-pill">${escapeHtml(p.hourlyRate || '$75 - $85/hr C2C')}</span>
+      </div>
+
+      <div class="job-meta">
+        <span>📍 ${escapeHtml(p.jobLocation)}</span>
+        <span>⏱️ ${escapeHtml(p.datePosted)}</span>
+        <span>👤 Recruiter: <strong>${escapeHtml(p.recruiterName)}</strong> &lt;${escapeHtml(p.recruiterEmail)}&gt;</span>
+      </div>
+
+      <p class="job-desc" style="white-space: pre-line; max-height:120px; overflow-y:auto;">${escapeHtml(p.jobDescription)}</p>
+
+      <div class="skill-tags">
+        ${(p.skills || []).map(s => `<span class="skill-tag">${escapeHtml(s)}</span>`).join('')}
+      </div>
+
+      <div class="job-actions" style="margin-top:1rem;">
+        <a href="${p.linkedInPostUrl}" target="_blank" class="btn-ghost btn-sm">View LinkedIn Post ↗</a>
+        ${p.isDuplicate
+          ? `<button class="btn-ghost btn-sm" disabled style="opacity:0.6; cursor:not-allowed;">✓ Submitted (Duplicate)</button>`
+          : `<button onclick="triggerAutoSubmit('${p.id}')" class="btn-primary btn-sm btn-glow">Auto-Submit via Gmail 🚀</button>`
+        }
+      </div>
+    </article>
+  `).join('');
+
+  // Store active posts in window scope for quick click access
+  window._autoPosts = posts;
+}
+
+async function triggerAutoSubmit(postId) {
+  const post = (window._autoPosts || []).find(p => p.id === postId);
+  if (!post) return;
+
+  showToast(`Generating ATS PDF Resume & Submitting Gmail Application to ${post.recruiterEmail}...`);
+
+  try {
+    const res = await fetch('/api/automation/run-full-flow', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ post })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.error || 'Submission failed.', true);
+      return;
+    }
+
+    showToast(`✅ Application Sent to ${post.recruiterEmail}! PDF Resume: ${data.submission.pdfFilename}`);
+    await loadSubmissionHistory();
+    await runAutoSearch(); // refresh duplicate state
+  } catch (err) {
+    showToast('Failed to submit application.', true);
+  }
+}
+window.triggerAutoSubmit = triggerAutoSubmit;
+
+async function loadSubmissionHistory() {
+  try {
+    const res = await fetch('/api/automation/submissions');
+    const data = await res.json();
+    const subs = data.submissions || [];
+    const body = document.getElementById('submissionHistoryBody');
+
+    if (!subs.length) {
+      body.innerHTML = '<tr><td colspan="7" style="text-align:center; opacity:0.7;">No automated submissions yet. Execute a 24h LinkedIn search above to submit applications.</td></tr>';
+      return;
+    }
+
+    body.innerHTML = subs.slice().reverse().map(s => `
+      <tr>
+        <td>${new Date(s.timestamp).toLocaleString()}</td>
+        <td><strong>${escapeHtml(s.jobTitle)}</strong></td>
+        <td>${escapeHtml(s.company)}</td>
+        <td>${escapeHtml(s.recruiterEmail)}</td>
+        <td><a href="${s.linkedInPostUrl}" target="_blank" style="color:var(--brand-cyan);">Post Link ↗</a></td>
+        <td><a href="/uploads/${escapeHtml(s.pdfFilename)}" target="_blank" style="color:#34d399;">📄 ${escapeHtml(s.pdfFilename)}</a></td>
+        <td><span class="count-pill" style="background:rgba(52,211,153,0.2); color:#34d399;">${escapeHtml(s.status)}</span></td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.warn('Could not load submissions history:', err);
+  }
 }
 
 // ---------- Init ----------

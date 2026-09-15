@@ -9,6 +9,9 @@ const multer = require('multer');
 const mammoth = require('mammoth');
 const path = require('path');
 const store = require('./store');
+const { extractPrimaryJobTitle, generateSearchQuery, searchLinkedIn24hPosts } = require('./linkedin_automation');
+const { generateTailoredPDF } = require('./pdf_generator');
+const { sendGmailApplication, formatEmailSubject, formatEmailBody } = require('./gmail_automation');
 
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
@@ -490,6 +493,112 @@ app.post('/api/outreach/send', requireAuth, sendLimiter, async (req, res) => {
 
 app.get('/api/outreach/history', requireAuth, (req, res) => {
   res.json({ sentEmails: store.getSentEmails(req.session.username) });
+});
+
+// --- AUTOMATION ENGINE API ENDPOINTS ---
+
+// Step 2: Search Relevant 24h C2C Jobs on LinkedIn
+app.post('/api/automation/linkedin-search', requireAuth, async (req, res) => {
+  const profile = store.getProfile(req.session.username) || {};
+  const resumeText = profile.resumeText || '';
+
+  const jobTitle = extractPrimaryJobTitle(resumeText);
+  const query = generateSearchQuery(jobTitle);
+  const results = searchLinkedIn24hPosts(query, jobTitle);
+
+  // Filter out duplicates
+  const filteredPosts = results.posts.map(post => ({
+    ...post,
+    isDuplicate: store.isDuplicateSubmission(req.session.username, post.linkedInPostUrl, post.recruiterEmail)
+  }));
+
+  res.json({
+    ok: true,
+    candidateJobTitle: jobTitle,
+    query,
+    linkedInSearchUrl: results.linkedInSearchUrl,
+    totalPosts: filteredPosts.length,
+    posts: filteredPosts
+  });
+});
+
+// Step 4 - 7: Run Full Automated Flow (AI PDF Resume + Gmail Auto-Submission + Record Submission)
+app.post('/api/automation/run-full-flow', requireAuth, async (req, res) => {
+  const { post } = req.body;
+  const username = req.session.username;
+  const profile = store.getProfile(username) || {};
+
+  if (!post || !post.recruiterEmail) {
+    return res.status(400).json({ error: 'Valid LinkedIn recruiter post details with email are required.' });
+  }
+
+  // Duplicate Check
+  if (store.isDuplicateSubmission(username, post.linkedInPostUrl, post.recruiterEmail)) {
+    return res.status(400).json({ error: 'Duplicate submission prevented: Application already submitted to this recruiter post.' });
+  }
+
+  const candidateInfo = {
+    name: profile.name || username || 'Candidate',
+    email: profile.email || 'candidate@domain.com',
+    phone: profile.phone || '+1 (555) 019-2831',
+    linkedin: profile.linkedin || 'https://www.linkedin.com/in/candidate',
+    location: profile.location || 'United States',
+    workAuth: profile.workAuth || 'Authorized for C2C / Corp-to-Corp',
+    availability: profile.availability || 'Immediate / 1 Week Notice',
+    totalExperience: profile.totalExperience || '8+ Years',
+    expectedRate: profile.expectedRate || '$75 - $85 / hr C2C',
+    resumeText: profile.resumeText || ''
+  };
+
+  try {
+    // Step 4: Generate ATS PDF Resume
+    const pdfPath = await generateTailoredPDF(candidateInfo, {
+      jobTitle: post.jobTitle,
+      company: post.company,
+      jobDescription: post.jobDescription,
+      skills: post.skills
+    });
+
+    // Step 6 & 7: Compose and Send Gmail Application
+    const emailResult = await sendGmailApplication({
+      recruiterEmail: post.recruiterEmail,
+      recruiterName: post.recruiterName,
+      jobTitle: post.jobTitle,
+      candidateInfo,
+      postUrl: post.linkedInPostUrl,
+      jobDescription: post.jobDescription,
+      pdfPath
+    });
+
+    // Step 7: Record Submission in DB
+    const submissionRecord = store.recordSubmission(username, {
+      candidateName: candidateInfo.name,
+      recruiterName: post.recruiterName,
+      recruiterEmail: post.recruiterEmail,
+      company: post.company,
+      jobTitle: post.jobTitle,
+      linkedInPostUrl: post.linkedInPostUrl,
+      status: emailResult.simulated ? 'Logged (Simulated)' : (emailResult.fallback ? 'Logged (SMTP Timeout)' : 'Sent via Gmail'),
+      pdfFilename: path.basename(pdfPath),
+      deliveryMode: emailResult.mode
+    });
+
+    res.json({
+      ok: true,
+      message: 'Automated C2C application successfully processed!',
+      submission: submissionRecord,
+      emailDelivery: emailResult,
+      pdfPath: `/uploads/${path.basename(pdfPath)}`
+    });
+  } catch (err) {
+    console.error('Automation flow error:', err);
+    res.status(500).json({ error: 'Automation execution failed', detail: String(err) });
+  }
+});
+
+// Step 7: Get All Submissions History
+app.get('/api/automation/submissions', requireAuth, (req, res) => {
+  res.json({ submissions: store.getSubmissions(req.session.username) });
 });
 
 app.listen(PORT, () => {

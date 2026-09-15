@@ -86,6 +86,7 @@
   </div>
   <nav class="tabs">
     <button class="tab active" data-view="search">🔍 Search</button>
+    <button class="tab" data-view="automation">⚡ C2C Automation</button>
     <button class="tab" data-view="saved">🔖 Saved <span id="savedCount" class="count-pill">0</span></button>
     <button class="tab" data-view="sent">✉️ Sent mail <span id="sentCount" class="count-pill">0</span></button>
     <button class="tab" data-view="profile">👤 Profile</button>
@@ -168,6 +169,53 @@
         </thead>
         <tbody id="sentBody"></tbody>
       </table>
+    </div>
+  </section>
+
+  <!-- AUTOMATION ENGINE VIEW -->
+  <section id="view-automation" class="view">
+    <div class="search-header-row">
+      <div>
+        <h2 class="view-main-title">⚡ Automated LinkedIn 24h C2C Job Finder &amp; Gmail Submission</h2>
+        <p class="tagline">Extracts your resume title, executes 24-hour recruiter search, generates ATS-friendly PDF resume, and automatically submits Gmail applications.</p>
+      </div>
+      <button id="runAutoSearchBtn" type="button" class="btn-primary btn-glow">Execute 24h LinkedIn Search 🚀</button>
+    </div>
+
+    <div id="autoQueryBox" class="profile-card" style="margin-bottom: 1.5rem; display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+        <div>
+          <span style="font-size:0.85rem; color: var(--text-muted);">Extracted Primary Job Title:</span>
+          <h3 id="autoCandidateTitle" style="margin: 0.2rem 0; color: var(--brand-cyan);">Java Developer</h3>
+        </div>
+        <div>
+          <span style="font-size:0.85rem; color: var(--text-muted);">LinkedIn Search Query:</span>
+          <div id="autoSearchQuery" style="font-family: monospace; font-size: 0.95rem; background: rgba(0,0,0,0.4); padding: 0.4rem 0.8rem; border-radius:6px; border: 1px solid var(--glass-border);">"Java Developer" C2C -W2 -Full-Time -Bench -Sales -Hotlist</div>
+        </div>
+        <a id="autoLinkedInUrlBtn" href="#" target="_blank" class="btn-ghost btn-sm">Direct LinkedIn Feed ↗</a>
+      </div>
+    </div>
+
+    <div id="autoPostsGrid" class="jobs-grid"></div>
+
+    <div style="margin-top: 2.5rem;">
+      <h3 style="font-family: var(--serif); color: #fff; margin-bottom: 0.8rem;">📋 Submission History &amp; Tracking Record</h3>
+      <div class="sent-table-wrap">
+        <table class="sent-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Job Title</th>
+              <th>Company</th>
+              <th>Recruiter Email</th>
+              <th>Post URL</th>
+              <th>PDF Resume</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="submissionHistoryBody"></tbody>
+        </table>
+      </div>
     </div>
   </section>
 
