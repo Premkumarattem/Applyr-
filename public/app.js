@@ -569,7 +569,16 @@ document.getElementById('confirmSend').addEventListener('click', async () => {
 
   const btn = document.getElementById('confirmSend');
   btn.disabled = true;
-  btn.textContent = 'Sending…';
+  btn.textContent = 'Opening Gmail…';
+
+  // Synchronously build Gmail URL on user click so popup blocker never triggers!
+  const gmailUrl = `https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const win = window.open(gmailUrl, '_blank');
+  if (!win || win.closed || typeof win.closed === 'undefined') {
+    window.location.href = gmailUrl;
+  }
+
+  showToast(`Opening pre-filled Gmail Compose for ${to}... 🚀`);
 
   try {
     const res = await fetch('/api/outreach/send', {
@@ -585,23 +594,11 @@ document.getElementById('confirmSend').addEventListener('click', async () => {
       }),
     });
     const data = await res.json();
-    if (!res.ok) {
-      sendHint.textContent = data.detail ? `${data.error}: ${data.detail}` : (data.error || 'Failed to send.');
-      sendHint.className = 'hint error';
-      return;
-    }
     state.sentEmails = data.sentEmails || [];
     document.getElementById('sentCount').textContent = state.sentEmails.length;
-    if (data.gmailUrl) {
-      window.open(data.gmailUrl, '_blank');
-      showToast(`Opened Gmail Compose with pre-filled application for ${to}!`);
-    } else {
-      showToast(`Email composed for ${to}`);
-    }
     closeCompose();
   } catch {
-    sendHint.textContent = 'Could not reach the server.';
-    sendHint.className = 'hint error';
+    console.warn('Could not record sent email log.');
   } finally {
     btn.disabled = false;
     btn.textContent = 'Send email';
@@ -722,7 +719,55 @@ async function triggerAutoSubmit(postId) {
   const post = (window._autoPosts || []).find(p => p.id === postId);
   if (!post) return;
 
-  showToast(`Generating ATS PDF Resume & Redirecting to Gmail... ⏳`);
+  const recruiterName = post.recruiterName || 'Hiring Manager';
+  const firstName = recruiterName.trim().split(' ')[0];
+  const subject = `Submission for ${post.jobTitle || 'C2C Consultant'} | C2C Consultant`;
+
+  const bodyText = `Dear ${firstName},
+
+I hope this email finds you well.
+
+I came across your recent LinkedIn hiring post regarding the ${post.jobTitle || 'C2C Consultant'} opportunity and would like to submit my application.
+
+Please find my customized resume attached for your review.
+
+Candidate Summary
+
+• Candidate Name: Premkumar Attem
+• Email: premkumarattem@gmail.com
+• Phone: +1 (555) 019-2831
+• LinkedIn Profile: https://www.linkedin.com/in/premkumarattem
+• Current Location: United States
+• Work Authorization: Authorized for C2C / Corp-to-Corp
+• Availability: Immediate / 1 Week Notice
+• Total Experience: 8+ Years
+• Expected Salary: $75 - $85 / hr C2C
+
+LinkedIn Job Post
+
+Post URL:
+${post.linkedInPostUrl || 'https://www.linkedin.com/search/results/content/'}
+
+Job Description:
+${post.jobDescription || 'N/A'}
+
+I believe my experience aligns well with your requirements and would appreciate the opportunity to discuss the role further.
+
+Thank you for your time and consideration.
+
+Best Regards,
+
+Premkumar Attem`;
+
+  const gmailUrl = `https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&to=${encodeURIComponent(post.recruiterEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
+
+  // Open Gmail immediately on user click (popup-unblocked)!
+  const win = window.open(gmailUrl, '_blank');
+  if (!win || win.closed || typeof win.closed === 'undefined') {
+    window.location.href = gmailUrl;
+  }
+
+  showToast(`Opening Gmail Compose for ${post.recruiterEmail}... 🚀`);
 
   try {
     const res = await fetch('/api/automation/run-full-flow', {
@@ -731,20 +776,13 @@ async function triggerAutoSubmit(postId) {
       body: JSON.stringify({ post })
     });
     const data = await res.json();
-    if (!res.ok) {
-      showToast(data.error || 'Submission failed.', true);
-      return;
+    if (res.ok && data.submission) {
+      showToast(`✅ Gmail opened for ${post.recruiterEmail}! PDF Resume: ${data.submission.pdfFilename}`);
+      await loadSubmissionHistory();
+      await runAutoSearch(); // refresh duplicate state
     }
-
-    if (data.emailDelivery && data.emailDelivery.gmailUrl) {
-      window.open(data.emailDelivery.gmailUrl, '_blank');
-    }
-
-    showToast(`✅ Redirected to Gmail Compose for ${post.recruiterEmail}! PDF Resume: ${data.submission.pdfFilename}`);
-    await loadSubmissionHistory();
-    await runAutoSearch(); // refresh duplicate state
   } catch (err) {
-    showToast('Failed to submit application.', true);
+    console.warn('Backend automation flow error:', err);
   }
 }
 window.triggerAutoSubmit = triggerAutoSubmit;
