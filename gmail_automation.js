@@ -66,11 +66,23 @@ ${candidateInfo.name || 'Job Candidate'}`;
 }
 
 /**
- * Send Gmail / SMTP application email with PDF attachment.
+ * Build direct Gmail web compose URL pre-filled with recipient, subject, and body.
+ * No API key required!
+ */
+function buildGmailRedirectUrl({ to, subject, body }) {
+  const encTo = encodeURIComponent(to || '');
+  const encSu = encodeURIComponent(subject || '');
+  const encBody = encodeURIComponent(body || '');
+  return `https://mail.google.com/mail/?view=cm&fs=1&to=${encTo}&su=${encSu}&body=${encBody}`;
+}
+
+/**
+ * Send / Prepare Gmail application with PDF attachment & direct Gmail web redirect URL.
  */
 async function sendGmailApplication({ recruiterEmail, recruiterName, jobTitle, candidateInfo, postUrl, jobDescription, pdfPath }) {
   const subject = formatEmailSubject(jobTitle);
   const bodyText = formatEmailBody(recruiterName, jobTitle, candidateInfo, postUrl, jobDescription);
+  const gmailUrl = buildGmailRedirectUrl({ to: recruiterEmail, subject, body: bodyText });
 
   const attachments = [];
   if (pdfPath && fs.existsSync(pdfPath)) {
@@ -81,37 +93,9 @@ async function sendGmailApplication({ recruiterEmail, recruiterName, jobTitle, c
     });
   }
 
-  // Check env credentials
+  // Check env credentials for direct SMTP/Resend sending if present
   const gmailUser = process.env.GMAIL_USER || process.env.SMTP_USER;
   const gmailPass = process.env.GMAIL_APP_PASSWORD || process.env.SMTP_PASS;
-  const resendKey = process.env.RESEND_API_KEY;
-
-  if (resendKey) {
-    try {
-      const resendRes = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${resendKey}`
-        },
-        body: JSON.stringify({
-          from: process.env.RESEND_FROM || 'onboarding@resend.dev',
-          to: [recruiterEmail],
-          subject,
-          text: bodyText,
-          attachments: attachments.map(a => ({
-            filename: a.filename,
-            content: fs.readFileSync(a.path).toString('base64')
-          }))
-        })
-      });
-      if (resendRes.ok) {
-        return { success: true, mode: 'resend', recipient: recruiterEmail, subject };
-      }
-    } catch (err) {
-      console.warn('Resend send failed, trying SMTP transporter...', err);
-    }
-  }
 
   if (gmailUser && gmailPass) {
     const transporter = nodemailer.createTransport({
@@ -120,7 +104,7 @@ async function sendGmailApplication({ recruiterEmail, recruiterName, jobTitle, c
       port: Number(process.env.SMTP_PORT) || 465,
       secure: true,
       auth: { user: gmailUser, pass: gmailPass },
-      connectionTimeout: 8000
+      connectionTimeout: 6000
     });
 
     try {
@@ -131,20 +115,27 @@ async function sendGmailApplication({ recruiterEmail, recruiterName, jobTitle, c
         text: bodyText,
         attachments
       });
-      return { success: true, mode: 'gmail-smtp', messageId: info.messageId, recipient: recruiterEmail, subject };
+      return { success: true, mode: 'gmail-smtp', messageId: info.messageId, recipient: recruiterEmail, subject, gmailUrl };
     } catch (err) {
-      console.warn('Gmail SMTP failed, falling back to simulated log delivery:', err.message);
-      return { success: true, mode: 'fallback-logged', fallback: true, recipient: recruiterEmail, subject };
+      console.warn('Gmail SMTP error, falling back to direct Gmail Web Compose:', err.message);
     }
   }
 
-  // Fallback for demo/test mode
-  return { success: true, mode: 'simulation-logged', simulated: true, recipient: recruiterEmail, subject };
+  // Direct Gmail Redirection Mode (No API keys needed)
+  return {
+    success: true,
+    mode: 'gmail-web-redirect',
+    gmailRedirect: true,
+    recipient: recruiterEmail,
+    subject,
+    gmailUrl
+  };
 }
 
 module.exports = {
   formatEmailSubject,
   personalizeRecruiterGreeting,
   formatEmailBody,
+  buildGmailRedirectUrl,
   sendGmailApplication
 };

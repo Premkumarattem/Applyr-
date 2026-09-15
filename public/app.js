@@ -592,12 +592,11 @@ document.getElementById('confirmSend').addEventListener('click', async () => {
     }
     state.sentEmails = data.sentEmails || [];
     document.getElementById('sentCount').textContent = state.sentEmails.length;
-    if (data.fallback) {
-      showToast(`SMTP timed out - Outreach saved to log (Use RESEND_API_KEY for HTTP delivery)`);
-    } else if (data.simulated) {
-      showToast(`Outreach saved to log (Demo mode - configure SMTP/.env for live sending)`);
+    if (data.gmailUrl) {
+      window.open(data.gmailUrl, '_blank');
+      showToast(`Opened Gmail Compose with pre-filled application for ${to}!`);
     } else {
-      showToast(`Email sent successfully to ${to}`);
+      showToast(`Email composed for ${to}`);
     }
     closeCompose();
   } catch {
@@ -723,7 +722,7 @@ async function triggerAutoSubmit(postId) {
   const post = (window._autoPosts || []).find(p => p.id === postId);
   if (!post) return;
 
-  showToast(`Generating ATS PDF Resume & Submitting Gmail Application to ${post.recruiterEmail}...`);
+  showToast(`Generating ATS PDF Resume & Redirecting to Gmail... ⏳`);
 
   try {
     const res = await fetch('/api/automation/run-full-flow', {
@@ -737,7 +736,11 @@ async function triggerAutoSubmit(postId) {
       return;
     }
 
-    showToast(`✅ Application Sent to ${post.recruiterEmail}! PDF Resume: ${data.submission.pdfFilename}`);
+    if (data.emailDelivery && data.emailDelivery.gmailUrl) {
+      window.open(data.emailDelivery.gmailUrl, '_blank');
+    }
+
+    showToast(`✅ Redirected to Gmail Compose for ${post.recruiterEmail}! PDF Resume: ${data.submission.pdfFilename}`);
     await loadSubmissionHistory();
     await runAutoSearch(); // refresh duplicate state
   } catch (err) {
@@ -766,7 +769,10 @@ async function loadSubmissionHistory() {
         <td>${escapeHtml(s.recruiterEmail)}</td>
         <td><a href="${s.linkedInPostUrl}" target="_blank" style="color:var(--brand-cyan);">Post Link ↗</a></td>
         <td><a href="/uploads/${escapeHtml(s.pdfFilename)}" target="_blank" style="color:#34d399;">📄 ${escapeHtml(s.pdfFilename)}</a></td>
-        <td><span class="count-pill" style="background:rgba(52,211,153,0.2); color:#34d399;">${escapeHtml(s.status)}</span></td>
+        <td>
+          <span class="count-pill" style="background:rgba(52,211,153,0.2); color:#34d399; margin-bottom:0.2rem; display:inline-block;">${escapeHtml(s.status)}</span>
+          ${s.deliveryMode === 'gmail-web-redirect' && s.linkedInPostUrl ? `<br/><a href="${s.linkedInPostUrl}" target="_blank" style="font-size:0.75rem; color:var(--brand-cyan);">Reopen Post ↗</a>` : ''}
+        </td>
       </tr>
     `).join('');
   } catch (err) {

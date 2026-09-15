@@ -407,88 +407,17 @@ app.post('/api/outreach/send', requireAuth, sendLimiter, async (req, res) => {
   }
 
   // Prefer Resend (HTTPS API) when configured — it works even on hosts that
-  // block outbound SMTP ports (Railway's free/hobby plans, for example).
-  if (RESEND_API_KEY) {
-    try {
-      const payload = {
-        from: `${FROM_NAME || 'Job Applicant'} <${FROM_EMAIL || 'onboarding@resend.dev'}>`,
-        to: [to],
-        subject,
-        text: body,
-      };
-      if (resumeAttachment) {
-        payload.attachments = [
-          {
-            filename: attachments[0].filename,
-            content: Buffer.from(resumeAttachment, 'utf-8').toString('base64'),
-          },
-        ];
-      }
-      const r = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${RESEND_API_KEY}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!r.ok) {
-        const detail = await r.text();
-        return res.status(r.status).json({ error: 'Resend API error', detail });
-      }
-      const log = store.logSentEmail(req.session.username, { to, subject, jobId, jobTitle, company });
-      return res.json({ ok: true, sentEmails: log });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'Failed to send via Resend', detail: String(err) });
-    }
-  }
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
-  if (!RESEND_API_KEY && (!SMTP_HOST || !SMTP_USER || !SMTP_PASS)) {
-    console.log(`[OUTREACH DEMO] Simulated email to ${to} for "${jobTitle}" at "${company}".`);
-    const log = store.logSentEmail(req.session.username, { to, subject, jobId, jobTitle, company, simulated: true });
-    return res.json({
-      ok: true,
-      simulated: true,
-      message: 'Outreach email saved to Outreach Log! Add RESEND_API_KEY or SMTP credentials to your .env file to send real live emails.',
-      sentEmails: log,
-    });
-  }
-
-  const transportOptions = {};
-  if (process.env.SMTP_SERVICE) {
-    transportOptions.service = process.env.SMTP_SERVICE;
-    transportOptions.auth = { user: SMTP_USER, pass: SMTP_PASS };
-  } else {
-    transportOptions.host = SMTP_HOST;
-    transportOptions.port = Number(SMTP_PORT) || 587;
-    transportOptions.secure = Number(SMTP_PORT) === 465 || process.env.SMTP_SECURE === 'true';
-    transportOptions.auth = { user: SMTP_USER, pass: SMTP_PASS };
-  }
-  transportOptions.connectionTimeout = 8000;
-
-  const transporter = nodemailer.createTransport(transportOptions);
-
-  try {
-    await transporter.sendMail({
-      from: `"${FROM_NAME || 'Job Applicant'}" <${FROM_EMAIL || SMTP_USER}>`,
-      to,
-      subject,
-      text: body,
-      attachments,
-    });
-    const log = store.logSentEmail(req.session.username, { to, subject, jobId, jobTitle, company });
-    res.json({ ok: true, sentEmails: log });
-  } catch (err) {
-    console.warn('SMTP transport error (connection blocked or timed out):', err.message);
-    const log = store.logSentEmail(req.session.username, { to, subject, jobId, jobTitle, company, fallback: true });
-    res.json({
-      ok: true,
-      fallback: true,
-      message: `SMTP port connection timed out. Outreach saved to your log! (Recommended: Use RESEND_API_KEY in .env for unblocked HTTPS email delivery).`,
-      sentEmails: log,
-    });
-  }
+  // Direct Gmail Redirection (No API keys needed!)
+  const log = store.logSentEmail(req.session.username, { to, subject, jobId, jobTitle, company, gmailUrl });
+  return res.json({
+    ok: true,
+    redirect: true,
+    gmailUrl,
+    message: 'Redirecting to Gmail with pre-filled application email...',
+    sentEmails: log,
+  });
 });
 
 app.get('/api/outreach/history', requireAuth, (req, res) => {
