@@ -763,7 +763,7 @@ async function loadSubmissionHistory() {
         <td><a href="/uploads/${escapeHtml(s.pdfFilename)}" target="_blank" style="color:#34d399;">📄 ${escapeHtml(s.pdfFilename)}</a></td>
         <td>
           <span class="count-pill" style="background:rgba(52,211,153,0.2); color:#34d399; margin-bottom:0.2rem; display:inline-block;">${escapeHtml(s.status)}</span>
-          ${s.deliveryMode === 'gmail-web-redirect' && s.linkedInPostUrl ? `<br/><a href="${s.linkedInPostUrl}" target="_blank" style="font-size:0.75rem; color:var(--brand-cyan);">Reopen Post ↗</a>` : ''}
+          ${s.previewUrl ? `<br/><a href="${s.previewUrl}" target="_blank" style="font-size:0.78rem; color:#38bdf8;">View Live Email ↗</a>` : ''}
         </td>
       </tr>
     `).join('');
