@@ -32,25 +32,16 @@ html, body {
   padding: 0;
   width: 100%;
   min-height: 100vh;
-  background: var(--bg-dark);
-  background-image: var(--bg-gradient);
+  background: radial-gradient(circle at 10% 20%, rgba(6, 182, 212, 0.15) 0%, transparent 40%),
+              radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.15) 0%, transparent 40%),
+              radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.8) 0%, #070a14 100%),
+              linear-gradient(135deg, #090d16 0%, #0f172a 50%, #0b1120 100%);
   background-attachment: fixed;
   color: var(--ink);
   font-family: var(--sans);
   font-size: 16px;
   line-height: 1.5;
   overflow-x: hidden;
-}
-
-/* ---------- WebGL 3D Canvas ---------- */
-#bg3d {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  pointer-events: none;
-  z-index: 0;
 }
 
 .hidden { display: none !important; }

@@ -761,29 +761,15 @@ Premkumar Attem`;
 
   const gmailUrl = `https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&to=${encodeURIComponent(post.recruiterEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
 
-  // Open Gmail immediately on user click (popup-unblocked)!
-  const win = window.open(gmailUrl, '_blank');
-  if (!win || win.closed || typeof win.closed === 'undefined') {
-    window.location.href = gmailUrl;
-  }
+  // Log submission in background
+  fetch('/api/automation/run-full-flow', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ post })
+  }).catch(() => {});
 
-  showToast(`Opening Gmail Compose for ${post.recruiterEmail}... 🚀`);
-
-  try {
-    const res = await fetch('/api/automation/run-full-flow', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ post })
-    });
-    const data = await res.json();
-    if (res.ok && data.submission) {
-      showToast(`✅ Gmail opened for ${post.recruiterEmail}! PDF Resume: ${data.submission.pdfFilename}`);
-      await loadSubmissionHistory();
-      await runAutoSearch(); // refresh duplicate state
-    }
-  } catch (err) {
-    console.warn('Backend automation flow error:', err);
-  }
+  // Direct redirection to Gmail Web Compose without manual interaction
+  window.location.href = gmailUrl;
 }
 window.triggerAutoSubmit = triggerAutoSubmit;
 
