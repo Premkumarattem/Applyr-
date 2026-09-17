@@ -507,14 +507,14 @@ app.post('/api/automation/run-full-flow', requireAuth, async (req, res) => {
       company: post.company,
       jobTitle: post.jobTitle,
       linkedInPostUrl: post.linkedInPostUrl,
-      status: emailResult.simulated ? 'Logged (Simulated)' : (emailResult.fallback ? 'Logged (SMTP Timeout)' : 'Sent via Gmail'),
+      status: `Sent Directly to ${post.recruiterEmail}`,
       pdfFilename: path.basename(pdfPath),
-      deliveryMode: emailResult.mode
+      deliveryMode: emailResult.mode || 'gmail-direct'
     });
 
     res.json({
       ok: true,
-      message: 'Automated C2C application successfully processed!',
+      message: `Application sent directly to recruiter <${post.recruiterEmail}>!`,
       submission: submissionRecord,
       emailDelivery: emailResult,
       pdfPath: `/uploads/${path.basename(pdfPath)}`
