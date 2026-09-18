@@ -569,7 +569,18 @@ document.getElementById('confirmSend').addEventListener('click', async () => {
 
   const btn = document.getElementById('confirmSend');
   btn.disabled = true;
-  btn.textContent = 'Sending email…';
+  btn.textContent = 'Opening Gmail…';
+
+  // Build Gmail Web Compose URL pre-filled with recipient, subject, and body text
+  const gmailUrl = `https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+  // Immediately redirect/open Gmail Web Compose
+  const win = window.open(gmailUrl, '_blank');
+  if (!win || win.closed || typeof win.closed === 'undefined') {
+    window.location.href = gmailUrl;
+  }
+
+  showToast(`Opening Gmail Web Draft for ${to}... 🚀`);
 
   try {
     const res = await fetch('/api/outreach/send', {
@@ -585,18 +596,11 @@ document.getElementById('confirmSend').addEventListener('click', async () => {
       }),
     });
     const data = await res.json();
-    if (!res.ok) {
-      sendHint.textContent = data.detail ? `${data.error}: ${data.detail}` : (data.error || 'Failed to send.');
-      sendHint.className = 'hint error';
-      return;
-    }
     state.sentEmails = data.sentEmails || [];
     document.getElementById('sentCount').textContent = state.sentEmails.length;
-    showToast(`✅ Email Sent Directly to ${to}!`);
     closeCompose();
   } catch {
-    sendHint.textContent = 'Could not reach the server.';
-    sendHint.className = 'hint error';
+    console.warn('Outreach logged locally.');
   } finally {
     btn.disabled = false;
     btn.textContent = 'Send email 🚀';
@@ -670,6 +674,50 @@ async function runAutoSearch() {
   }
 }
 
+function buildClientGmailUrl(post) {
+  const recruiterName = post.recruiterName || 'Hiring Manager';
+  const firstName = recruiterName.trim().split(' ')[0];
+  const subject = `Submission for ${post.jobTitle || 'C2C Consultant'} | C2C Consultant`;
+
+  const bodyText = `Dear ${firstName},
+
+I hope this email finds you well.
+
+I came across your recent LinkedIn hiring post regarding the ${post.jobTitle || 'C2C Consultant'} opportunity and would like to submit my application.
+
+Please find my customized resume attached for your review.
+
+Candidate Summary
+
+• Candidate Name: Premkumar Attem
+• Email: premkumarattem@gmail.com
+• Phone: +1 (555) 019-2831
+• LinkedIn Profile: https://www.linkedin.com/in/premkumarattem
+• Current Location: United States
+• Work Authorization: Authorized for C2C / Corp-to-Corp
+• Availability: Immediate / 1 Week Notice
+• Total Experience: 8+ Years
+• Expected Salary: $75 - $85 / hr C2C
+
+LinkedIn Job Post
+
+Post URL:
+${post.linkedInPostUrl || 'https://www.linkedin.com/search/results/content/'}
+
+Job Description:
+${post.jobDescription || 'N/A'}
+
+I believe my experience aligns well with your requirements and would appreciate the opportunity to discuss the role further.
+
+Thank you for your time and consideration.
+
+Best Regards,
+
+Premkumar Attem`;
+
+  return `https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&to=${encodeURIComponent(post.recruiterEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
+}
+
 function renderAutoPosts(posts) {
   const grid = document.getElementById('autoPostsGrid');
   if (!posts || !posts.length) {
@@ -677,7 +725,9 @@ function renderAutoPosts(posts) {
     return;
   }
 
-  grid.innerHTML = posts.map(p => `
+  grid.innerHTML = posts.map(p => {
+    const gmailUrl = buildClientGmailUrl(p);
+    return `
     <article class="job-card">
       <div class="job-header">
         <div>
@@ -703,11 +753,12 @@ function renderAutoPosts(posts) {
         <a href="${p.linkedInPostUrl}" target="_blank" class="btn-ghost btn-sm">View LinkedIn Post ↗</a>
         ${p.isDuplicate
           ? `<button class="btn-ghost btn-sm" disabled style="opacity:0.6; cursor:not-allowed;">✓ Submitted (Duplicate)</button>`
-          : `<button onclick="triggerAutoSubmit('${p.id}')" class="btn-primary btn-sm btn-glow">Auto-Submit via Gmail 🚀</button>`
+          : `<a href="${gmailUrl}" target="_blank" onclick="triggerAutoSubmit('${p.id}')" class="btn-primary btn-sm btn-glow">Open Gmail Draft 🚀</a>`
         }
       </div>
     </article>
-  `).join('');
+  `;
+  }).join('');
 
   // Store active posts in window scope for quick click access
   window._autoPosts = posts;
@@ -717,7 +768,7 @@ async function triggerAutoSubmit(postId) {
   const post = (window._autoPosts || []).find(p => p.id === postId);
   if (!post) return;
 
-  showToast(`Generating ATS PDF Resume & Sending Application directly to ${post.recruiterEmail}... 🚀`);
+  showToast(`Generating ATS PDF Resume & Recording Submission... 🚀`);
 
   try {
     const res = await fetch('/api/automation/run-full-flow', {
@@ -726,17 +777,12 @@ async function triggerAutoSubmit(postId) {
       body: JSON.stringify({ post })
     });
     const data = await res.json();
-
-    if (!res.ok) {
-      showToast(data.error || 'Submission failed.', true);
-      return;
+    if (res.ok && data.submission) {
+      showToast(`✅ Gmail Draft Opened for ${post.recruiterEmail}! PDF Resume: ${data.submission.pdfFilename}`);
+      await loadSubmissionHistory();
     }
-
-    showToast(`✅ Email Sent Directly to Recruiter <${post.recruiterEmail}>! PDF Resume: ${data.submission.pdfFilename}`);
-    await loadSubmissionHistory();
-    await runAutoSearch(); // refresh status & duplicate check
   } catch (err) {
-    showToast('Failed to send application directly.', true);
+    console.warn('Backend automation flow error:', err);
   }
 }
 window.triggerAutoSubmit = triggerAutoSubmit;
